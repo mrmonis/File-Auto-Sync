@@ -1,6 +1,6 @@
 ﻿namespace File_Auto_Sync
 {
-    partial class DirectoryWatchForm
+    partial class SyncListForm
     {
         /// <summary>
         /// Required designer variable.
@@ -28,9 +28,17 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
+            this.SuspendLayout();
+            // 
+            // SyncListForm
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Text = "Form1";
+            this.ClientSize = new System.Drawing.Size(343, 188);
+            this.Name = "SyncListForm";
+            this.Text = "Sync List";
+            this.ResumeLayout(false);
+
         }
 
         #endregion

@@ -15,35 +15,42 @@ namespace File_Auto_Sync
     /// </summary>
     public partial class SystemTrayForm : Form
     {
+        // Name of save file. Saves info to xml.
+        private string SAVE_FILE_NAME = Path.GetDirectoryName(Application.ExecutablePath) + "\\paths.xml";
+
         private NotifyIcon m_tray_icon;
         private ContextMenu m_tray_menu;
         private FileSystemWatcher m_file_watcher;
 
+        private WatchedPath m_watched_path;
+
         public SystemTrayForm()
         {
-            // Set up the system tray menu
+            // Initialize private members
             m_tray_menu = new ContextMenu();
-            m_tray_menu.MenuItems.Add("Folders", OnFoldersSelect);
+            m_tray_icon = new NotifyIcon();
+            m_file_watcher = new FileSystemWatcher();
+            m_watched_path = new WatchedPath();
+
+            // Set up the system tray menu
+            m_tray_menu.MenuItems.Add("Sync folder", OnSyncFolderSelect);
+            m_tray_menu.MenuItems.Add("Watched folder", OnWatchedFolderSelect);
             m_tray_menu.MenuItems.Add("-");
             m_tray_menu.MenuItems.Add("Exit", OnExit);
 
-            m_tray_icon = new NotifyIcon();
+            
             m_tray_icon.Text = "AutoSync";
             m_tray_icon.Icon = new Icon(SystemIcons.Application, 40, 40);
 
             m_tray_icon.ContextMenu = m_tray_menu;
             m_tray_icon.Visible = true;
 
-            // Initialize the file watcher
-            m_file_watcher = new FileSystemWatcher();
-
-
             try
             {
-                string path = GetFilePath();
-                if (path != null)
+                ReadWatchedPath();
+                if (m_watched_path != null)
                 {
-                    m_file_watcher.Path = path;
+                    m_file_watcher.Path = m_watched_path.Path;
                 }
             }
             catch (Exception e)
@@ -61,11 +68,20 @@ namespace File_Auto_Sync
             m_file_watcher.Deleted += new FileSystemEventHandler(OnChanged);
             m_file_watcher.Renamed += new RenamedEventHandler(OnRenamed);
 
-            // Begin watching.
-            if (!m_file_watcher.Path.Equals(""))
+            // Begin watching (if possible).
+            SwitchFileWatcher(true);
+        }
+
+        /* Turns the file watcher on and off. */
+        protected void SwitchFileWatcher(bool enabled)
+        {
+            // If attempting to turn on without specifying a path, return.
+            if (enabled && m_file_watcher.Path.Equals(""))
             {
-                m_file_watcher.EnableRaisingEvents = true;
+                return;
             }
+            // Switch event raising.
+            m_file_watcher.EnableRaisingEvents = enabled;
         }
 
         protected override void OnLoad(EventArgs e)
@@ -81,51 +97,80 @@ namespace File_Auto_Sync
             Application.Exit();
         }
 
-        /* When a folder is selected with the context menu */
-        protected void OnFoldersSelect(object sender, EventArgs e)
+        /* Change which folder is synced with */
+        protected void OnSyncFolderSelect(object args, EventArgs e)
         {
             FolderBrowserDialog folderDlg = new FolderBrowserDialog();
             DialogResult result = folderDlg.ShowDialog();
             if (result == DialogResult.OK)
             {
-                ChangeFilePath(folderDlg.SelectedPath);
+                ChangeDestinationPath(folderDlg.SelectedPath);
+            }
+        }
+
+        /* Change which folder is being watched */
+        protected void OnWatchedFolderSelect(object sender, EventArgs e)
+        {
+            FolderBrowserDialog folderDlg = new FolderBrowserDialog();
+            DialogResult result = folderDlg.ShowDialog();
+            if (result == DialogResult.OK)
+            {
+                ChangeWatchedPath(folderDlg.SelectedPath);
             }
         }
 
         /* Retrieve the path stored in the paths.sav file */
-        protected string GetFilePath()
+        protected void ReadWatchedPath()
         {
-            FileStream fs = new FileStream(Path.GetDirectoryName(Application.ExecutablePath) + "\\paths.sav", FileMode.Open, FileAccess.Read);
-            StreamReader sr = new StreamReader(fs);
-            string listenPath = sr.ReadLine();
-            sr.Close();
-            fs.Close();
-            return listenPath;
+            FileSyncXMLParser parser = new FileSyncXMLParser();
+            m_watched_path = parser.ReadFile(SAVE_FILE_NAME);
+        }
+
+        protected void WriteWatchedPath()
+        {
+            FileSyncXMLParser parser = new FileSyncXMLParser();
+            parser.WriteFile(SAVE_FILE_NAME, m_watched_path);
         }
 
         /* Changes the path to the folder being watched by the file watcher */
-        protected void ChangeFilePath(String filePath)
+        protected void ChangeWatchedPath(String filePath)
         {
-            m_file_watcher.EnableRaisingEvents = false;
-            FileStream fs = new FileStream(Path.GetDirectoryName(Application.ExecutablePath) + "\\paths.sav", FileMode.Create, FileAccess.Write);
-            StreamWriter sr = new StreamWriter(fs);
-            sr.WriteLine(filePath);
-            sr.Close();
-            fs.Close();
-            m_file_watcher.Path = filePath;
-            m_file_watcher.EnableRaisingEvents = true;
+            // Stop watching for file changes
+            SwitchFileWatcher(false);
+            FileSyncXMLParser parser = new FileSyncXMLParser();
+            
+            // For now, just overwrite the path and save
+            m_watched_path.Path = m_file_watcher.Path = filePath;
+            parser.WriteFile(SAVE_FILE_NAME, m_watched_path);
+
+            SwitchFileWatcher(true);
+        }
+
+        /* Changes the destination path */
+        protected void ChangeDestinationPath(string filePath)
+        {
+            // Stop watching for file changes
+            SwitchFileWatcher(false);
+            FileSyncXMLParser parser = new FileSyncXMLParser();
+
+            // For now, just overwrite the destination and save
+            m_watched_path.Destinations.Clear();
+            m_watched_path.Destinations.Add(filePath);
+            parser.WriteFile(SAVE_FILE_NAME, m_watched_path);
+
+            SwitchFileWatcher(true);
         }
 
         /* When a file has changed */
         protected void OnChanged(object sender, FileSystemEventArgs e)
         {
-            
+            // Sync with the destination folder
         }
 
         /* When a file is renamed */
         protected void OnRenamed(object sender, EventArgs e)
         {
-            
+            // Rename the file in the destination folder            
         }
     }
 }

@@ -9,9 +9,9 @@ using System.Windows.Forms;
 
 namespace File_Auto_Sync
 {
-    public partial class DirectoryWatchForm : Form
+    public partial class SyncListForm : Form
     {
-        public DirectoryWatchForm()
+        public SyncListForm()
         {
             InitializeComponent();
         }
