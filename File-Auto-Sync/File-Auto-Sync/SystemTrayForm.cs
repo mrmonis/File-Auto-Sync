@@ -65,7 +65,7 @@ namespace File_Auto_Sync
             // Add event handlers.
             m_file_watcher.Changed += new FileSystemEventHandler(OnChanged);
             m_file_watcher.Created += new FileSystemEventHandler(OnChanged);
-            m_file_watcher.Deleted += new FileSystemEventHandler(OnChanged);
+            m_file_watcher.Deleted += new FileSystemEventHandler(OnDeleted);
             m_file_watcher.Renamed += new RenamedEventHandler(OnRenamed);
 
             // Begin watching (if possible).
@@ -161,30 +161,60 @@ namespace File_Auto_Sync
             SwitchFileWatcher(true);
         }
 
-        /* When a file has changed */
+        /* When a file is changed */
         protected void OnChanged(object sender, FileSystemEventArgs e)
         {
             // Sync with the destination folder
-            string path = e.FullPath;
             try {
                 // Ignore directories
-                if (!((File.GetAttributes(path) & FileAttributes.Directory) == FileAttributes.Directory))
+                if (!Directory.Exists(e.FullPath))
                 {
                     // Copy to each destination 
                     foreach (string dest in m_watched_path.Destinations)
                     {
-                        SyncManager.CopyFile(path, dest);
+                        SyncManager.CopyFile(e.FullPath, dest, e.Name);
                     }
                 }
-            } catch (Exception exc) {
+            } 
+            catch (Exception exc) 
+            {
                 
             }
         }
 
-        /* When a file is renamed */
-        protected void OnRenamed(object sender, EventArgs e)
+        /* When a file is deleted */
+        protected void OnDeleted(object sender, FileSystemEventArgs e)
         {
-            // Rename the file in the destination folder            
+            try
+            {
+                // Ignore directories
+                if (!Directory.Exists(e.FullPath))
+                {
+                    // Copy to each destination 
+                    foreach (string dest in m_watched_path.Destinations)
+                    {
+                        // Delete the file in each one
+                        SyncManager.DeleteFile(dest, e.Name);
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+
+            }
+        }
+
+        /* When a file is renamed */
+        protected void OnRenamed(object sender, RenamedEventArgs e)
+        {
+            if (e.OldName != e.Name)
+            {
+                // Copy to each destination 
+                foreach (string dest in m_watched_path.Destinations)
+                {
+                    SyncManager.Rename(dest, e.OldName, e.Name);
+                }
+            }
         }
     }
 }
