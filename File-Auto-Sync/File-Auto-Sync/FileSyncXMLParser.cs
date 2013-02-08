@@ -30,16 +30,23 @@ namespace File_Auto_Sync
             // Read in the data
             while (textReader.Read())
             {
-                textReader.MoveToElement();
-                if (textReader.Name.Equals("Start")) 
+                if (textReader.NodeType == XmlNodeType.Element && textReader.Name == "Start")
                 {
-                    path.Path = textReader.Value;
-                }
-                if (textReader.Name.Equals("Destination"))
-                {
-                    path.Destinations.Add(textReader.Value);
+                    path.Path = textReader.GetAttribute("path");
+
+                    while (textReader.NodeType != XmlNodeType.EndElement)
+                    {
+                        textReader.Read();
+                        if (textReader.Name == "Destination")
+                        {
+                            path.Destinations.Add(textReader.GetAttribute("path"));
+                        }
+                    }
                 }
             }
+            // Close the reader
+            textReader.Close();
+
             return path;
         }
 
@@ -51,11 +58,11 @@ namespace File_Auto_Sync
 
             // Write the starting name
             textWriter.WriteStartElement("Start");
-            textWriter.WriteString(path.Path);
+            textWriter.WriteAttributeString("path", path.Path);
             foreach (string dest in path.Destinations) 
             {
                 textWriter.WriteStartElement("Destination");
-                textWriter.WriteString(dest);
+                textWriter.WriteAttributeString("path", dest);
                 textWriter.WriteEndElement();
             }
             textWriter.WriteEndElement();

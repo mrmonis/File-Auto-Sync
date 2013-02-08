@@ -165,6 +165,20 @@ namespace File_Auto_Sync
         protected void OnChanged(object sender, FileSystemEventArgs e)
         {
             // Sync with the destination folder
+            string path = e.FullPath;
+            try {
+                // Ignore directories
+                if (!((File.GetAttributes(path) & FileAttributes.Directory) == FileAttributes.Directory))
+                {
+                    // Copy to each destination 
+                    foreach (string dest in m_watched_path.Destinations)
+                    {
+                        SyncManager.CopyFile(path, dest);
+                    }
+                }
+            } catch (Exception exc) {
+                
+            }
         }
 
         /* When a file is renamed */
